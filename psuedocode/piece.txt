@@ -1,0 +1,58 @@
+CLASS Piece
+	PRIVATE Block composingBlock
+	PRIVATE boolean[][] shape
+
+	PUBLIC PROCEDURE getShape(int rotation)
+		// Normalises rotation under mod 4 as any other number of 
+		// 90° rotations would be equivalent to one of these
+		rotation = rotation MOD 4
+
+		// Set the current working rotated shape to the default shape
+		currentShape = shape
+		FOR i = 0 to rotation // Repeat the algorithm multiple times
+			rotatedShape = []
+			// Iterate through the columns of the array
+			FOR j = 0 to LEN(shape[0])
+				// For each column iterate through its rows
+				newRow = []
+				// Iterate through the current columns rows
+				FOR k = 0 to LEN(shape)
+					// Add cell to new row
+					newRow.append(shape[k][j])
+				NEXT k
+				// Append new row to new rotated shape
+				rotatedShape.append(newRow)
+			NEXT j
+			// Store the result to be returned or rotated again
+			currentShape = rotatedShape
+		NEXT i
+		return currentShape
+	ENDPROCEDURE
+
+
+	PUBLIC PROCEDURE getComposingBlock()
+		return composingBlock
+	ENDPROCEDURE
+ENDCLASS
+
+
+T - Normal Rotation:
+[
+	[false, true,  false],
+	[true,  true,  true],
+	[false, false, false],
+]
+
+T - Rotated Once:
+[
+	[false, true, false],
+	[false, true, true],
+	[false, true, false],
+]
+
+S - Piece Example:
+[
+	[false, true, true],
+	[true, true, false],
+	[false, false, false],
+]

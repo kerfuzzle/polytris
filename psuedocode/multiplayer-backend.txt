@@ -1,0 +1,272 @@
+PUBLIC PROCEDURE onPrivateJoinButtonClick()
+	// Get HTML input elements
+	usernameInput = getElement("username-input")
+	roomCodeInput = getElement("room-code-input")
+	
+	// Get username and room code
+	username = usernameInput.getValue()
+	rooomCode = roomCodeInput.getValue()
+	// Validate that usename and room code are not empty and room code has 4 characters
+	IF LEN(username) == 0 THEN
+		showAlert("Please provide a username!", 2500)
+	ELSE IF LEN(rooomCode) == 0 THEN
+		showAlert("Please provide a room code!", 2500)
+	ELSE IF LEN(rooomCode) != 4 THEN
+		showAlert("Room codes must be 4 characters!", 2500)
+	ELSE
+		// Room code and username valid -> try and join the lobby
+		joinLobby(rooomCode, username)
+	ENDIF
+ENDPROCEDURE
+
+PUBLIC_LOBBY_CODE = "0000"
+
+PUBLIC PROCEDURE onPublicJoinButtonClick()
+	// Get username from HTML
+	usernameInput = getElement("username-input")
+	username = usernameInput.getValue()
+	IF LEN(username) == 0 THEN // Check there is a username
+		showAlert("Please provide a username!", 2500)
+	ELSE
+		// Try and join the lobby with the hardcoded public lobby code
+		joinLobby(PUBLIC_LOBBY_CODE, username)
+	ENDIF
+ENDPROCEDURE
+
+BASE_URL = "http://localhost/"
+
+PUBLIC PROCEDURE joinLobby(string code, string username)
+	// Add room code and username into the query string of the URL
+	url = BASE_URL + "join?code=" + code + "&name=" + username
+	// Try and open a WebSocket
+	result = openWebSocket(url)
+	IF result === null THEN
+		// Opening a WebSocket failed -> room doesn't exist
+		showAlert("No room exists with the code " + code)
+	ENDIF 
+		// WebSocket connected, swap view to multiplayer GUI
+		swapView("multiplayer")
+		multiplayerManager = new MultiplayerManager(code, username, result)
+	ENDIF
+ENDPROCEDURE
+
+PROCEDURE onPrivateCreateButtonClick() 
+	// Get username from HTML
+	usernameInput = getElement("username-input")
+	username = usernameInput.getValue()
+	IF LEN(username) == 0 THEN // Check there is a username
+		showAlert("Please provide a username!", 2500)
+	ELSE
+		// Try and create a room
+		createdRoomCode = requestLobbyCreate()
+		IF createdRoomCode != null THEN
+			// If the room was created sucessfully, try and join it
+			joinLobby(createdRoomCode, username)
+		ENDIF
+	ENDIF
+ENDPROCEDURE
+
+PROCEDURE requestLobbyCreate()
+	// Specify the create route in the URL
+	url = BASE_URL + 'create'
+	// Make POST request
+	result = makePostRequest(url)
+	// Parse result and return code
+	roomCode = parseJSON(result).code
+	return roomCode
+ENDPROCEDURE
+
+PROCEDURE onWebSocketMessage(string message)
+	// Parse JSON string to object
+	messsageObject = parseJSON(message)
+	messageType = messsageObject.updateType
+
+	// Figure out the type of the update
+	IF messageType == UpdateType.PLAYER_LIST THEN
+		// Sort the player list by score and display it on the GUI
+		playerList = messsageObject.data
+		leaderboard = playerList.sortByScore()
+		updateLeaderboardVisual(leaderboard)
+	ELSE IF messageType == UpdateType.GARBAGE THEN
+		// Add garbage to the game state and display a message indicating where it came from
+		lineCount = messsageObject.data.lines
+		gameState.addGarbage(lineCount)
+		displayMessage("Recieved " + lineCount + "lines from " + messsageObject.data.source.name)
+	ELSE IF messageType == UpdateType.GAME_RESULTS THEN
+		// Extract the winner from the update data
+		winner = messsageObject.data.winner
+		IF isAlive THEN
+			// If the client is alive then it must be the winner
+			stopGame()
+			// Display results screen (true indicates that the client won)
+			displayMultiplayerResults(true)
+		ELSE 
+			// Client is not alive -> display message highlighting who won
+			displayMessage(winner.name + " won the game!")
+		ENDIF
+	ELSE IF messageType == UpdateType.GAME_START THEN
+		// Update the leaderboard for the start of the game
+		updateLeaderboardVisual(messsageObject.data)
+		// If the client is not spectating then start the game loop
+		IF NOT isSpectating THEN
+			startGame()
+		ENDIF
+	ENDIF
+ENDPROCEDURE
+
+PROCEDURE onWebSocketMessage(WebSocket webSocket, string message)
+	// Figure out the soure client using the sessionId
+	sourceClient = clients.get(webSocket.data.sessionId)
+	IF sourceClient == null THEN return
+	// Set the last update timestamp to the current time
+	sourceClient.lastUpdate = GET_CURRENT_TIME()
+	// Get the lobby associated with the client
+	lobby = sourceClient.connectedLobby
+	// Parse JSON string to object
+	messsageObject = parseJSON(message)
+	messageType = messsageObject.updateType
+	
+	// Figure out the type of the update
+	IF messageType == UpdateType.PIECE_PLACE THEN
+		// Piece was placed, update the server side copy of the clients score and stackHeight
+		sourceClient.score = messsageObject.score
+		sourceClient.stackHeight = messsageObject.stackHeight
+		
+		// Calculate the amount of garbage per client (evenly distributed around other clients)
+		garbagePerClient = CEILING(messsageObject.linesCleared / (LEN(lobby.clients) - 1))
+		// Send garbage to other clients
+		lobby.sendGarbage(garbagePerClient, sourceClient)
+	ELSE IF messageType == UpdateType.GAME_STATE THEN
+		// Update the state values for the client
+		sourceClient.isAlive = messsageObject.data.isAlive
+		sourceClient.isSpectating = messsageObject.data.isSpectating
+		// Since we could've just set the penultimate player's isAlive = false, there could be a winner -> check for a winner
+		lobby.checkForWin()
+	ELSE IF messageType == UpdateType.REQUEST_START THEN
+		// If there is less than two players in the lobby then the game cannot start -> ignore the request
+		IF LEN(lobby.clients) < 2 OR lobby.gameInProgress == true THEN return
+		// otherwise start the game
+		ELSE lobby.startGame()
+	ENDIF
+ENDPROCEDURE
+
+PROCEDURE onWebSocketClose(WebSocket webSocket)
+	// Figure out the soure client using the sessionId
+	sourceClient = clients.get(webSocket.data.sessionId)
+	IF sourceClient == null THEN return
+	// Remove the client from the global client list
+	clients.remove(webSocket.data.sessionId)
+	// Find the client within the lobby that they are in
+	clientIndex = sourceClient.lobby.clients.find(sourceClient)
+	// Remove them from the lobby's client list
+	sourceClient.lobby.clients.removeItemAtIndex(clientIndex)
+	// Check for a winner in the lobby incase the disconnected client was the 2nd to last player
+	sourceClient.lobby.checkForWin()
+ENDPROCEDURE
+
+PUBLIC PROCEDURE getDataObject()
+	return { name: name, score: score, stackHeight: stackHeight, isAlive: isAlive, isSpectating: isSpectating }
+ENDPROCEDURE
+
+PUBLIC PROCEDURE getPlayerList()
+	return clients.map(c -> c.getDataObject())
+ENDPROCEDURE
+
+PUBLIC PROCEDURE sendGarbage(int amount, Client sourceClient)
+	// Create the message to be sent to clients recieving garbage
+	updateJSON = toJSON({ updateType: UpdateType.GARBAGE, data: { lines: amount,  source: sourceClient.getDataObject() }})
+	FOR i = 0 TO LEN(clients) - 1 // Iterate through all clients
+		// Only send garbage if the client is not the client that sent the garbage
+		IF clients[i] != sourceClient THEN 
+			clients[i].webSocket.send(updateJSON)
+		ENDIF
+	NEXT i
+ENDPROCEDURE
+
+PUBLIC PROCEDURE sendPlayerList()
+	// Get the client list and convert them to the required format
+	playerList = clients.map(c -> c.getDataObject())
+	// Prepare update JSON string
+	updateJSON = toJSON({ updateType: UpdateType.PLAYER_LIST, data: playerList })
+	// Send update to all clients
+	FOR i = 0 TO LEN(clients)
+		clients[i].webSocket.send(updateJSON)
+	NEXT i
+ENDPROCEDURE
+
+PUBLIC PROCEDURE startGame()
+	gameInProgress = true
+	// Reset clients' properties back to default
+	FOR i = 0 TO LEN(clients)
+		clients[i].score = 0
+		clients[i].stackHeight = 0
+		clients[i].isAlive = NOT clients[i].isSpectating
+	NEXT i
+	// Get the client list and convert them to the required format
+	playerList = clients.map(c -> c.getDataObject())
+	// Prepare update JSON string
+	updateJSON = toJSON({ updateType: UpdateType.GAME_START, data: playerList })
+	// Send update to all clients
+	FOR i = 0 TO LEN(clients)
+		clients[i].webSocket.send(updateJSON)
+	NEXT i
+ENDPROCEDURE
+
+PUBLIC PROCEDURE checkForWin()
+	// If the game isn't running then there cannot be a winner
+	IF gameInProgress == true THEN
+		// Filter clients by those that are alive but not spectating
+		aliveClients = clients.filter(c -> c.isAlive AND NOT c.isSpectating)
+		// If there is only one client left then they must be the winner
+		IF LEN(aliveClients) == 1 THEN
+			winner = aliveClients[0]
+			// Prepare JSON string for GAME_RESULTS update
+			updateJSON = toJSON({ updateType: UpdateType.GAME_RESULTS, data: { winner: winner.getDataObject() })
+			// Send update to all clients
+			FOR i = 0 TO LEN(clients)
+				clients[i].webSocket.send(updateJSON)
+			NEXT i
+		ENDIF
+	ENDIF
+ENDPROCEDURE
+
+
+CLASS MultiplayerManager
+	WebSocket webSocket
+	string roomCode
+	string username
+	boolean isSpectating
+	boolean isAlive
+	GameState gameState
+
+	PUBLIC PROCEDURE new(string givenCode, string givenUsername, WebSocket givenWebSocket)
+		roomCode = givenCode
+		username = givenUsername
+		webSocket = givenWebSocket
+		isAlive = false
+		isSpectating = true
+	ENDPROCEDURE
+
+	PUBLIC PROCEDURE onPiecePlace(int linesCleared)
+		// Piece was placed, send PIECE_PLACE update to server indicating new score, stackHeight and how many lines the piece cleared
+		updateJSON = toJSON({ updateType: UpdateType.PIECE_PLACE, data: { score: gameState.score, stackHeight: gameState.stackHeight, linesCleared: linesCleared }})
+		webSocket.send(updateJSON)
+	ENDPROCEDURE
+
+	PUBLIC PROCEDURE sendUpdatedState()
+		// isAlive or isSpectating was updated, send a new copy to the game server
+		updateJSON = toJSON({ updateType: UpdateType.GAME_STATE, data: { isAlive: isAlive, isSpectating: isSpectating }})
+		webSocket.send(updateJSON)
+	ENDPROCEDURE
+
+	PUBLIC PROCEDURE requestStart()
+		// Request for the server to start the game, if it is sucessful we should recieve a GAME_START update back
+		updateJSON = toJSON({ updateType: UpdateType.REQUEST_START, data: null })
+		webSocket.send(updateJSON)
+	ENDPROCEDURE
+
+
+	PUBLIC PROCEDURE startGame()
+		isAlive = true
+		gameState = new GameState(tetrominoBag, userConfig, username)
+		renderer = new Renderer

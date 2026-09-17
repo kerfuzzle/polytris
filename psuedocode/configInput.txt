@@ -1,0 +1,105 @@
+PROCEDURE onSliderUpdate(event)
+	# Gets the id of the event target so the right config property is updated
+	propertyName = event.target.getId()
+	# Gets the updated value
+	newValue = event.target.value
+	# Switches over the property names to find the right one to update
+	SWITCH propertyName:
+		CASE 'sdf':
+			config.setSDF(newValue)	
+		CASE 'arr':
+			config.setARR(newValue)	
+		CASE 'das':
+			config.setDAS(newValue)
+	ENDSWITCH
+
+	# Update the label on the slider head
+	sliderHead.setText(newValue)
+	# Calculate how far along the slider the label should be
+	maxValue = event.target.max
+	minValue = event.target.min
+	proportion = (newValue - minValue) / (maxValue - minValue)
+	# Update the slider head label position
+	sliderHead.setPosition(proportion * event.target.width)
+ENDPROCEDURE
+
+waitingForKeybindAction = null
+
+PROCEDURE onKeybindButtonClick(event)
+	# Get the corresponding keybind action integer from the button
+	# This tells us what keybind needs to be changed
+	actionInteger = event.target.getAction()
+
+	# Stop if there isnt an action integer or the program is already waiting for a different keybind
+	IF actionInteger == null OR waitingForKeybindAction != null THEN
+		return
+	ENDIF
+
+	# Show an alert to the user telling them to press a key
+	showAlert("Press a key to map to '" + event.target.getText() + "'", 0)
+	# Set the flag to the corresponding action
+	waitingForKeybindAction = actionInteger
+ENDPROCEDURE
+
+PROCEDURE onKeyPress(event)
+	# Ignore keypresses if the program isn't waiting for one
+	IF waitingForKeybindAction == null THEN
+		return
+	ENDIF
+
+	# Hide the current alert telling the user to press a key
+	hideAlert()
+
+	# Try and assign the key that was pressed to the action
+	result = config.setKeybind(waitingAction, event.keyCode)
+	IF result == true THEN
+		# Updating the config was succesful so redraw the text to reflect the change
+		updateKeybindVisuals()
+	ELSE
+		# Updating the config was not succesful so alert the user with an error
+		showAlert("The key " + event.keyCode + " is already in use!")
+	ENDIF
+
+	# Reset the flag so that no further keypresses are processed
+	waitingForKeybindAction = null
+ENDPROCEDURE
+
+PROCEDURE showAlert(message)
+	# Get the alert box from the DOM
+	alertBox = getAlertBox()
+
+	# Unhide it and set its content to the message
+	alertBox.setText(message)
+	alertBox.setActive(true)
+ENDPROCEDURE
+
+PROCEDURE hideAlert()
+	# Get the alert box from the DOM
+	alertBox = getAlertBox()
+	# Hide the alert box
+	alertBox.setActive(false)
+ENDIF
+
+PROCEDURE updateKeybindVisuals()
+	# Iterate through all the keybind elements on the page
+	keybindElements = getElements('keybind')
+	FOR keybindElement in keybindElements
+		# Get the action from the button
+		action = keybindElement.getAction()
+		IF action == null THEN
+			return
+		ENDIF
+		# Get the updated keybind from the config
+		keybind = config.getKeybind(parseInt(action))
+		if keybind == null THEN
+			return
+		ENDIF
+		// Update the text on the button
+		keybindElement.setText(keybind)
+	NEXT keybindElement
+ENDPROCEDURE
+
+
+
+
+

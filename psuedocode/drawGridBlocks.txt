@@ -1,0 +1,23 @@
+// drawRectangle(x1, y1, x2, y2, colour)
+
+PROCEDURE drawGridBlocks(Block[][] staticGrid, int gridWith, int gridHeight)
+	// Calculate row and column sizes in pixels
+	rowHeight = gridHeight / LEN(staticGrid)
+	colWidth = gridWith / LEN(staticGrid[0])
+
+	FOR i = 0 TO LEN(staticGrid)
+		FOR j = 0 TO LEN(staticGrid[i])
+			IF staticGrid[i][j] != undefined THEN // Check the cell contains a Block
+				blockColour = staticGrid[i][j].colour // Get colour from the Block in the cell
+				// Map the grid index to pixel coordinates
+				mappedX = j * colWidth
+				mappedY = i * rowHeight
+				// Draw square with dimensions rowHeight x colWidth at the mapped position
+				drawRectangle(mappedX, mappedY, mappedX + colWidth, mappedY + rowHeight, colour)
+			ENDIF
+		NEXT j
+	NEXT i
+ENDPROCEDURE
+
+
+

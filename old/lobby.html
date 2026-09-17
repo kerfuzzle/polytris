@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<link rel="stylesheet" href="/src/style.css">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	</head>
+	<body>
+		<div class="title-container">
+			<picture>
+				<source srcset="/polytrisLogo.avif" type="image/avif">
+				<source srcset="/polytrisLogo.webp" type="image/webp">
+				<img src="/polytrisLogo.png">
+			</picture>
+			<div>multiplayer</div>
+		</div>
+		<div class="main-container active">
+			<div class="username-input">
+				<label for="username">Username:</label>
+				<input name="username" maxlength="12" type="text">
+			</div>
+			<div class="divider"></div>
+			<div class="multiplayer">
+				<button class="public-button">
+					<img src="/public-icon.svg">
+					<span>public lobby</span>
+				</button>
+				<div class="private-group">
+					<div class="title">
+						<img src="/lock-icon.svg">
+						Private Lobbies
+					</div>
+					<div class="private-create-group">
+						<button class="private-button">
+							<img src="/private-create-icon.svg">
+							<span>create</span>
+						</button>
+					</div>
+					<div class="private-join-group">
+						<button class="private-button">
+							<img src="/private-join-icon.svg">
+							<span>join</span>
+						</button>
+						<div>
+							<label for="code">code</label>
+							<input name="code" type="text" maxlength="4">
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<button class="exit-button">
+			<img src="/exit-icon.svg">
+			<span>return</span>
+		</button>
+	</body>
+</html>

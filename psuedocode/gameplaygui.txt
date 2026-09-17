@@ -1,0 +1,97 @@
+blockBorderThickness = 4
+
+PROCEDURE drawBlock(block, xPosition, yPosition, width, height)
+	# Set colour slightly darker than block colour
+	setColour(block.colour[0] - 50, block.colour[1] - 50, block.colour[2] - 50)
+	# Draw full square
+	drawRectangle(xPosition, yPosition, width, height)
+	# Set colour to brigher normal colour
+	setColour(block.colour[0], block.colour[1], block.colour[2])
+	# Draw smaller square so that the darker square acts as BORDER_WIDTH pixels border
+	drawRectangle(xPosition + blockBorderThickness, yPosition + blockBorderThickness, width - 2 * blockBorderThickness, height - 2 * blockBorderThickness)
+ENDPROCEDURE
+
+PROCEDURE drawDecorations()
+	# Change font
+	setFont("Comfortaa")
+
+	# Draw grid background
+	translateCanvas(gridPosition.x, gridPosition.y)
+	setColour(40, 52, 61)
+	drawRectangle(0, 0, gridPixelDimensions.x, gridPixelDimensions.y)
+	setColour(22, 34, 43)
+	drawBorder(0, 0, gridPixelDimensions.x, gridPixelDimensions.y)
+	
+	# Move origin to hold position
+	translateCanvas(holdPosition.x - 10, gridPosition.y - 10)
+	# Draw hold text
+	drawText("hold", 0, -20)
+	# Draw background and border
+	setColour(40, 52, 61)
+	drawRectangle(0, 0, 100, 100)
+	setColour(22, 34, 43)
+	drawBlock(0, 0, 100, 100)
+
+	# Move origin to queue position
+	translateCanvas(queuePosition.x - 10, queuePosition.y - 10)
+	# Draw queue text
+	drawText("queue", 0, -20)
+	# Draw background and border
+	# 100 * LEN(gameState.queue) gives 100px of space for each piece
+	setColour(40, 52, 61)
+	drawRectangle(0, 0, 100, 100 * LEN(gameState.queue))
+	setColour(22, 34, 43)
+	drawBorder(0, 0, 100, 100 * LEN(gameState.queue))
+ENDPROCEDURE
+
+PROCEDURE drawInfo()
+	# Change font
+	setFont("Comfortaa")
+	# Move origin so that it is centered horizontally with the grid and 50px bellow the bottom of grid
+	translateCanvas(gridPosition.x + gridPixelDimensions.x / 2, this.gridPosition.y + this.gridPixelDimensions.y + 50)
+	# Draw text at the translated origin
+	drawText(gameState.lineCount + " Lines - Score: " + gameState.score, 0, 0)
+	# Check if there is a player name
+	IF gameState.playerName != "" THEN
+		# Draw player name below stats text
+		drawText(gameState.playerName, 0, 50)
+	ENDIF
+ENDPROCEDURE
+
+
+PROCEDURE showResults(score, linesCleared, timeSurvived)
+	# Get the HTML elements for the various parts of the results
+	resultsBox = getElement("results-box")
+	resultScore = getElement("results-score")
+	resultsTime = getElement("results-time")
+	resutsLines = getElement("results-lines")
+	# Convert the time survived from miliseconds to a MM:SS string
+	timeString  = formatTime(timeSurvived)
+
+	# Show the results box
+	resultsBox.setActive(true)
+	# Set the content of each of the results element to the relevant result
+	resultsScore.setText("Score: " + score)
+	resultsTime.setText(timeString)
+	resultsLines.setText(linesCleared + " lines!")
+ENDPROCEDURE
+
+PROCEDURE hideResults()
+	# Get the HTML element
+	resultsBox = getElement("results-box")
+	# Hide the HTML element
+	resultsBox.setActive(false)
+ENDPROCEDURE
+
+# Convert a time in ms to an MM:SS string
+FUNCTION formatTime(time)
+	# Convert ms to seconds
+	totalSeconds = time DIV 1000
+	# Calculate the number of minutes
+	minutes = totalSeconds DIV 60
+	# Calculate the number of seconds left after the minutes have been considered
+	remaingSeconds = totalSeconds MOD 60
+	# Return formatted string
+	return minutes + ":" + remaingSeconds
+ENDFUNCTION
+

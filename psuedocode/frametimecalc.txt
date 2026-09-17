@@ -1,0 +1,15 @@
+lastTime = getCurrentTime()
+
+PROCEDURE gameLoop()
+	currentTime = getCurrentTime()
+	// Calculate time elapsed
+	elapsed = currentTime - lastTime
+	// Set last time to current time
+	lastTime = currentTime
+	gameState.doTick(elapsed)
+	// Clear frame
+	renderer.clearFrame()
+	// Render new frame
+	renderer.render()
+ENDPROCEDURE
+

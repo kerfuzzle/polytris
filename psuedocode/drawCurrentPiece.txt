@@ -1,0 +1,16 @@
+PROCEDURE drawCurrentPiece(Piece currentPiece, Coordinate position, int rotation, int rowHeight, int colWidth)
+	shape = currentPiece.getShape(rotation)
+	block = currentPiece.getComposingBlock()
+	FOR i = 0 TO LEN(shape)
+		FOR j = 0 TO LEN(shape[i])
+			IF shape[i][j] == true THEN // Only render a block if it is enabled in the shape 2D array
+				// Map the grid index to pixel coordinates
+				mappedX = (position.x + j) * colWidth
+				mappedY = (position.y + i) * rowHeight
+				// Draw square with dimensions rowHeight x colWidth in the block's colour
+				drawRectangle(mappedX, mappedY, mappedX + colWidth, mappedY + rowHeight, block.colour)
+			ENDIF
+		NEXT j
+	NEXT i
+ENDPROCEDURE
+

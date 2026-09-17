@@ -1,0 +1,14 @@
+// drawLine(x1, y1, x2, y2)
+
+PROCEDURE drawGridBackground(int width, int height, int rows, int cols)
+	rowHeight = height / rows // Calculates height of each row
+	FOR i = 0 TO rows
+		drawLine(0, i * rowHeight, width, i * rowHeight) // Draws horizontal line i * rowHeight pixels down
+	NEXT i
+
+	colWidth = width / cols // Calculates width of each column
+	FOR j = 0 TO cols
+		drawLine(j * colWidth, 0, j * colWidth, height) // Draws vertical line j * colWidth pixels along
+	NEXT j
+ENDPROCEDURE
+

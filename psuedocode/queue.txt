@@ -1,0 +1,33 @@
+CLASS PieceQueue
+	PRIVATE Piece[] queue
+	PRIVATE Piece[] completeBag
+	PRIVATE Piece[] currentBag
+
+	PUBLIC PROCEDURE new(Piece[] givenBag, int queueLength)
+		completeBag = givenBag
+		currentBag = completeBag
+		queue = []
+		FOR int i = 0 TO queueLength // Makes the initial queue the correct length
+			generateNewPiece()
+		NEXT i
+	ENDPROCEDURE
+
+	PUBLIC FUNCTION getNextPiece()
+		Piece next = queue.shift() // Get the first piece in the queue
+		generateNewPiece() // Generate and add another piece to the back of the queue, ensuring the queue is always the same length
+		return next
+	ENDPROCEDURE
+
+	PUBLIC FUNCTION getQueue()
+		return queue
+	ENDPROCEDURE
+	
+	PRIVATE PROCEDURE generateNewPiece()
+		IF LENGTH(currentBag) == 0 THEN // If there are no more remaining pieces, reset the remaining pieces back to the full bag
+			currentBag = completeBag
+		ENDIF
+		int index = RAND_INT(0, LENGTH(currentBag) - 1) // Picks a random piece from the remaining pieces
+		queue.push(currentBag[index]) // Adds selected piece to back of queue
+		currentBag.splice(index, 1) // Removes the selected piece from the current bag
+	ENDPROCEDURE
+ENDCLASS

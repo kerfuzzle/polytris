@@ -1,0 +1,104 @@
+ENUM KeybindAction
+	LEFT = 0
+	RIGHT = 1
+	SOFT_DROP = 2
+	HARD_DROP = 3
+	ROTATE_AC = 4
+	ROTATE_CW = 5
+	ROTATE_180 = 6
+	EXIT = 7
+ENDENUM
+
+CLASS Configuration
+	PRIVATE int handlingDAS
+	PRIVATE int handlingARR
+	PRIVATE int handlingSDF
+	PRIVATE string[] keybindKeys
+
+	PUBLIC PROCEDURE new()
+		// Setup default values for the handling options
+		handlingDAS = 10
+		handlingARR = 2
+		handlingSDF = 6
+		// Setup default keybinds
+		keybindKeys = ["a", "d", "s", "w", "i", "o", "p", "escape"]
+	ENDPROCEDURE
+
+	PUBLIC FUNCTION getHandlingConfig()
+		// Return all handling values in a single record
+		return { das: handlingDAS, arr: handlingARR, sdf: handlingSDF }
+	ENDPROCEDURE
+
+	PUBLIC FUNCTION setDAS(int newValue)
+		// Check if new value is outside the valid range
+		IF newValue < 1 OR newValue > 20 THEN
+			// Indicate error by returning false
+			return false
+		
+		// Assign valid value back to property
+		handlingDAS = newValue
+		saveConfig() // Save config to LocalStorage
+		return true // Success
+	ENDFUNCTION
+
+	PUBLIC FUNCTION setARR(int newValue)
+		// Check if new value is outside the valid range
+		IF newValue < 1 OR newValue > 20 THEN
+			// Indicate error by returning false
+			return false
+		
+		// Assign valid value back to property
+		handlingARR = newValue
+		saveConfig() // Save config to LocalStorage
+		return true // Success
+	ENDFUNCTION
+
+	PUBLIC FUNCTION setSDF(int newValue)
+		// Check if new value is outside the valid range
+		IF newValue < 1 OR newValue > 20 THEN
+			// Indicate error by returning false
+			return false
+		
+		// Assign valid value back to property
+		handlingSDF = newValue
+		saveConfig() // Save config to LocalStorage
+		return true // Success
+	ENDFUNCTION
+
+	PUBLIC FUNCTION setKeybind(KeybindAction action, string newKey)
+		found = keybindKeys.search(newKey) // Search current keybinds for the new key
+		IF found == true THEN // keybindKeys cannot contain duplicate
+			return false // Return false to indicate error
+		
+		keybindKeys[action] = newKey // Set keybind at the correct index to the new key
+		saveConfig() // Save config to LocalStorage
+		return true
+	ENDFUNCTION
+
+	PUBLIC FUNCTION getKeybind(KeybindAction action)
+		// Get the keybind for the specified action by using it as the index
+		return keybindKeys[action]
+	ENDFUNCTION
+
+	PUBLIC PROCEDURE loadConfig()
+		jsonConfig = getLocalStorage()
+		IF jsonConfig == null
+			// No saved config to load
+			saveConfig() // Save current config
+			return
+		object = convert_to_object(jsonConfig) // Convert json to object
+		// Set all the properties from the saved object to the current class
+		handlingDAS = object.handlingDAS
+		handlingARR = object.handlingARR
+		handlingSDF = object.handlingSDF
+		keybindKeys = object.keybindKeys
+	ENDPROCEDURE
+
+	PUBLIC PROCEDURE saveConfig()
+		// Convert the current config into a json string
+		jsonConfig = convert_to_json(self)
+		// Save the json into LocalStorage
+		saveToLocalStorage(jsonConfig)
+	ENDPROCEDURE
+ENDCLASS
+

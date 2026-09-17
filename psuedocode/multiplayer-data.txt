@@ -1,0 +1,26 @@
+{
+	updateType: UpdateType.EXAMPLE
+	data: {
+		...
+	} 
+}
+
+LEADERBOAD
+[
+	{ name: 'example', score: 1000, stackHeight: 5, isAlive: true, isSpectating: false },
+	{ name: 'example2', score: 500, stackHeight: 20, isAlive: false, isSpectating: false },
+	...
+]
+
+PIECE_PLACE
+{ score: 15000, stackHeight: 10, linesCleared: 3 }
+
+GAME_STATE
+{ isAlive: false, isSpectating: false }
+
+GAME_RESULTS
+{ winner: { name: 'example', score: 1000, stackHeight: 5, isAlive: true, isSpectating: false } }
+
+GARBAGE
+{ lines: 3, source: { name: 'example', score: 1000, stackHeight: 5, isAlive: true, isSpectating: false } }
+

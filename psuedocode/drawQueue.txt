@@ -1,0 +1,23 @@
+PROCEDURE drawQueue(Piece[] queue)
+	// Iterate through all the pieces in the queue
+	FOR i = 0 TO LEN(queue):
+		piece = queue[i]
+		// Get the block the piece is made of
+		block = piece.getComposingBlock()
+		// Get the piece shape unrotated
+		shape = piece.getShape(0)
+		FOR j = 0 TO LEN(shape)
+			FOR k = 0 TO LEN(shape[j])
+				IF shape[j][k] == true THEN // Only render a block if it is enabled in the shape 2D array
+					// Converts coordinates from the shape array to pixel coordinates
+					mappedX = k * columnWidth
+					// Adds on position in queue * 50px so that consecutive pieces are listed vertically
+					mappedY = j * rowHeight + i * 50 
+					// Draw square with dimensions rowHeight x columnWidth in the block's colour
+					drawRectangle(mappedX, mappedY, mappedX + columnWidth, mappedY + rowHeight, block.colour)
+				ENDIF
+			NEXT k
+		NEXT j
+	NEXT i
+ENDPROCEDURE
+

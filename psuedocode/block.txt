@@ -1,0 +1,11 @@
+CLASS Block
+	PRIVATE int[3] colour
+	PUBLIC PROCEDURE new(int r, int b, int g)
+		colour = [r, g, b] // Integer RGB values from 0-255
+	ENDPROCEDURE
+
+	PUBLIC FUNCTION getColour()
+		return colour
+	ENDFUNCTION
+ENDCLASS
+

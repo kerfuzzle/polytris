@@ -1,0 +1,283 @@
+CLASS GameState
+	PRIVATE float baseGravity = 1000
+	PRIVATE float currentGravity = 1
+	PRIVATE float timeSinceGravity = 0
+	PRIVATE float softDropActive
+	...
+	PUBLIC PROCEDURE doTick(elapsed)
+		...
+		// Keep track of time passed (ms)
+		timeSinceGravity = timeSinceGravity + elapsed
+		// Check if time passed is greater than threshold
+		IF timeSinceGravity > (gravityThreshold / currentGravity) THEN
+			moveCurrentPiece(3) // Move piece 1 cell downwards
+			timeSinceGravity = 0 // Reset counter
+		ENDIF
+		...
+	ENDPROCEDURE
+
+
+	PUBLIC PROCEDURE doTick(elapsed)
+		...
+		// Keep track of time passed (ms)
+		timeSinceGravity = timeSinceGravity + elapsed
+		
+		// Decrease threshold for higher gravity multipliers
+		threshold = (baseGravity / currentGravity)
+		IF softDropActive == true THEN
+			// Decrease threshold further if soft drop is active
+			threshold = threshold / handling.sdf
+		ENDIF
+		// Check if time passed is greater than threshold
+		IF timeSinceGravity > threshold THEN
+			result = moveCurrentPiece(3) // Move piece 1 cell downwards
+			// Piece could not be moved downwards -> piece must be grounded
+			IF result == false THEN
+				// Place the piece
+				placementResult = placeCurrentPiece()
+				IF placementResult == true THEN
+					// Dequeue a piece from the queue and make it the current piece
+					currentPiece = queue.getNextPiece()
+					// Reset piece position and rotation ready for the new piece
+					currentPiecePosition = { x: 0, y: 0 }
+					currentPieceRotation = 0
+					// Piece was placed -> Hold no longer on cooldown 
+					holdOnCooldown = false
+				ELSE
+					// Handle gameover
+					print("Game over detected!")
+					stopGameLoop()
+				ENDIF
+			ENDIF
+			timeSinceGravity = 0 // Reset counter
+		ENDIF
+		...
+	ENDPROCEDURE
+
+	PUBLIC FUNCTION placeCurrentPiece()
+		// Get the block the current piece is made of
+		block = currentPiece.getBlock()
+		shape = currentPiece.getShape()
+
+		// Keep track of which rows had blocks placed into them
+		potentialClearedLines = []
+		// Iterate through the piece's shape array
+		FOR i = 0 TO LEN(shape)
+			FOR j = TO LEN(shape[i])
+				// Check if the cell of the piece is enabled
+				IF shape[i][j] == true THEN
+					// Determine where on the grid the piece block would be
+					gridPositionX = currentPiecePosition.x + j
+					gridPositionY = currentPiecePosition.y + i
+
+					// Block is above the top of the grid
+					IF gridPositionY < 0 THEN
+						// Placement invalid, return false
+						return false
+					ELSE
+						// Set the the corresponding cell to the piece block
+						staticGrid[gridPositionY][gridPositionX] = block
+						IF gridPositionY NOT IN potentialClearedLines THEN
+							potentialClearedLines.append(gridPositionY)
+						ENDIF
+					ENDIF
+				ENDIF
+			NEXT j
+		NEXT i
+
+		// CHECKING FOR CLEARED LINES:
+		// Keep track of the number of lines cleared to calculate score
+		numClearedLines = 0
+		// Iterate through lines that were modified when the piece was placed
+		FOR i = 0 TO LEN(potentialClearedLines)
+			currentLine = potentialClearedLines[i]
+			// Check if the line is completed
+			IF checkIfLineCompleted(currentLine) == true THEN
+				// Line completed -> clear line and increment count
+				clearLine(currentLine)
+				numClearedLines++
+			ENDIF
+		NEXT i
+
+		// Calculate score
+		score += (numClearedLines ** 2) * 1000 * currentGravity
+
+		// No blocks were invalid so it was placed sucessfully, return true
+		return true
+	ENDPROCEDURE
+
+	PUBLIC FUNCTION addGarbage(numLines)
+		// Pick where in the line of garbage the empty block should be
+		gapPosition = RAND_INT(0, LEN(staticGrid[0]))
+		// Find the index of the bottom row of the grid
+		bottomRowIndex = LEN(staticGrid) - 1
+		// Keep track of if garbage pushed blocks off the top of the grid
+		gameOver = false
+
+		// Repeatedly add lines of garbage
+		FOR i = 0 TO numLines
+			// Check if the current top line is empty
+			// if it isn't then blocks will be pushed off the top of the grid
+			FOR j = 0 TO LEN(staticGrid[0])
+				IF staticGrid[0][j] != undefined THEN
+					gameOver = true
+				ENDIF
+			NEXT j
+
+			// Shift all the rows up by one
+			FOR j = 0 TO bottomRowIndex - 1
+				staticGrid[j] = staticGrid[j + 1]
+			NEXT j
+
+			// Fill bottom row with garbage blocks
+			FOR j = 0 TO LEN(staticGrid[bottomRowIndex])
+				// Only fill if it is not the gap position
+				IF j != gapPosition THEN
+					staticGrid[bottomRowIndex][j] = GARBAGE_BLOCK
+				ENDIF
+			NEXT j
+		NEXT i
+
+		// Indicate that adding garbage caused a game-over
+		return gameOver
+	ENDFUNCTION
+
+	PUBLIC FUNCTION checkIfLineCompleted(yPosition)
+		// Iterate through row
+		FOR i = 0 TO LEN(staticGrid[yPosition])
+			// Return false if any blocks in the row are empty
+			IF staticGrid[yPosition][i] == undefined THEN
+				return false
+			ENDIF
+		NEXT i
+		// If the algorithm reaches here then the line must be complete -> return true
+		return true
+	ENDFUNCTION
+
+	PUBLIC PROCEDURE clearLine(yPosition)
+		// Loop going upwards from the cleared line to the top of the grid
+		FOR i = yPosition TO 1 // Reversed loop
+			// Bring each line down by one row
+			staticGrid[i] = staticGrid[i - 1]
+		NEXT i
+
+		FOR i = 0 TO LEN(staticGrid[0])
+			// Clear out the line the line at the top of the grid
+			staticGrid[0][i] = undefined
+		NEXT i
+	ENDFUNCTION
+
+	PUBLIC FUNCTION moveCurrentPiece(direction)
+		// Determine where the piece would be if this move works
+		desiredPosition = currentPiecePosition
+		SWITCH direction:
+			CASE 1:
+				desiredPosition.y -= 1 // Up
+			CASE 2:
+				desiredPosition.x += 1 // Right
+			CASE 3:
+				desiredPosition.y += 1 // Down
+			CASE 4:
+				desiredPosition.x -= 1 // Left
+			default:
+				return throwError("Invalid movement direction")
+		ENDSWITCH
+
+		shape = currentPiece.getShape(currentPieceRotation)
+		// Iterate through the piece block
+		FOR i = 0 TO LEN(shape)
+			FOR j = TO LEN(shape[i])
+				// If the cell in the piece is empty then it can't intersect so no further checks are needed
+				IF shape[i][j] == true THEN
+					// Determine where on the grid the piece block would be
+					gridPositionX = desiredPosition.x + j
+					gridPositionY = desiredPosition.y + i
+					// Check that the block is within the bounds of the grid
+					IF gridPositionY < LEN(staticGrid) AND gridPositionX < LEN(staticGrid[0]) THEN
+						// Check if there is a static placed block intersecting
+						IF staticGrid[gridPositionY][gridPositionX] != NULL THEN
+							// Block intersects with static placed block -> move invalid
+							return false
+						ENDIF
+					ELSE
+						// Block is out of the grid -> move invalid
+						return false
+					ENDIF
+				ENDIF
+			NEXT j
+		NEXT i 
+
+		// If the code reaches here, none of the piece blocks intersected or went out of bounds
+		// This means the move is valid so is safe to actually carry out		
+		currentPiecePosition = desiredPosition
+		return true
+	ENDPROCEDURE
+
+
+	PUBLIC FUNCTION swapHold()
+		// Check if hold on cooldown
+		IF holdOnCooldown == true THEN
+			return false
+		ENDIF
+		// Swap hold and current piece
+		tempPiece = currentPiece
+		currentPiece = currentHold
+		currentHold = tempPiece
+
+		// Reset piece position & rotation
+		currentPiecePosition = { x: 0, y: 0 }
+		currentPieceRotation = 0
+
+		// Activate hold cooldown
+		holdOnCooldown = true
+		return true
+	ENDFUNCTION
+
+	ENUM Rotation
+		ANTI_CLOCKWISE
+		CLOCKWISE
+		FLIP
+	ENDENUM
+
+	PUBLIC ENDPROCEDURE rotateCurrentPiece(Rotation rotationType)
+		IF(rotationType == Rotation.ANTI_CLOCKWISE)
+			// Decrement rotation
+			currentPieceRotation--
+		ELSE IF(rotationType == Rotation.CLOCKWISE)
+			// Increment rotation
+			currentPieceRotation++
+		ELSE IF(rotationType == Rotation.FLIP)
+			// Increment rotation by 2
+			currentPieceRotation += 2
+		ENDIF
+		
+		// Normalise rotation under mod 4
+		currentPieceRotation = currentPieceRotation MOD 4
+		// If rotation is negative (anti-clockwise), add 4 to make it its equivalent clockwise rotation
+		IF currentPieceRotation < 0
+			currentPieceRotation += 4
+		ENDIF
+	ENDPROCEDURE
+
+	PUBLIC PROCEDURE hardDropCurrentPiece()
+		result = true
+		// Repeatedly move piece down until the movement fails
+		WHILE result == true
+			result = moveCurrentPiece(Direction.DOWN)
+		ENDWHILE
+
+		// Place the piece
+		placeCurrentPiece()
+		// Dequeue a piece from the queue and make it the current piece
+		currentPiece = queue.getNextPiece()
+		// Reset piece position and rotation ready for the new piece
+		currentPiecePosition = { x: 0, y: 0 }
+		currentPieceRotation = 0
+		// Piece was placed -> Hold no longer on cooldown 
+		holdOnCooldown = false
+		// Reset gravity counter so that the next piece doesnt move down early
+		timeSinceGravity = 0
+	ENDPROCEDURE
+
+	...
+ENDCLASS

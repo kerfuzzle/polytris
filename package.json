@@ -1,0 +1,21 @@
+{
+  "name": "polytris",
+  "module": "index.ts",
+  "devDependencies": {
+    "@eslint/js": "^9.10.0",
+    "@stylistic/eslint-plugin": "^2.8.0",
+    "@types/bun": "^1.1.9",
+    "@types/eslint__js": "^8.42.3",
+    "eslint": "^9.10.0",
+    "typescript": "^5.6.2",
+    "typescript-eslint": "^8.5.0",
+    "vscode-langservers-extracted": "^4.10.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "scripts": {
+    "dev": "bun --hot index.ts"
+  },
+  "type": "module"
+}

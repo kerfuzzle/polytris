@@ -1,0 +1,90 @@
+heldKeys = {}
+
+CLASS HeldKey
+	public String code
+	public bool isRepeating = false
+	public int timeSinceLastExecute = 0
+	public bool initialExecute = false
+ENDCLASS
+
+
+CLASS InputHandler
+	private Map(string -> HeldKey) heldKeys = {}
+	private Configuration userConfig
+	private GameState gameState
+
+	PUBLIC PROCEDURE processInputs(int elapsed)
+		// Get handling config
+		handlingConfig = userConfig.getHandlingConfig()
+
+		// Turn soft drop off, will be renabled again if the key is held
+		gameState.softDropActive = false
+		FOR key, value in heldKeys
+			// Get keybind from action
+			action = userConfig.getAction(key)
+			// Left and Right actions need to be handled differently
+			IF action == KeybindAction.LEFT OR action == KeybindAction
+				// Check if this is the first frame this key has been held
+				IF value.timeSinceLastExecute == 0 && value.isRepeating == false THEN
+					executeAction(action)
+				ENDIF
+
+				// Keep track of how long has passed since the action was last executed
+				value.timeSinceLastExecute += elapsed
+
+				// Check if the action is already repeating
+				IF value.isRepeating THEN
+					// Key is repeating so check if the time is greater than the ARR
+					IF value.timeSinceLastExecute > handlingConfig.arr THEN 
+						// Time passed is greater than the ARR so the action needs to be repeated
+						// Reset timer
+						value.timeSinceLastExecute = 0
+						// Repeat action
+						executeAction(action)
+					ENDIF
+				ELSE
+					// Key is not already repeating so check if the time is greater than the DAS
+					IF value.timeSinceLastExecute > handlingConfig.das THEN
+						// Time passed is greater than DAS so the key can now start repeating
+						// Reset timer
+						value.timeSinceLastExecute = 0
+						value.isRepeating = true
+						// Repeat action
+						executeAction(action)
+					ENDIF
+				ENDIF
+			ELSE IF action != null THEN
+				executeAction(action)
+			ENDIF
+		NEXT
+	ENDPROCEDURE
+
+	PRIVATE PROCEDURE executeAction(KeybindAction action)
+		SWITCH action
+			CASE KeybindAction.LEFT:
+				// Move current piece left
+				gameState.moveCurrentPiece(Direction.LEFT)
+			CASE KeybindAction.RIGHT:
+				// Move current piece right
+				gameState.moveCurrentPiece(Direction.RIGHT)
+			CASE KeybindAction.SOFT_DROP:
+				// Toggle soft drop on
+				gameState.softDropActive = true
+			CASE KeybindAction.HARD_DROP:
+				// Hard drop current piece
+				gameState.hardDropCurrentPiece()
+			CASE KeybindAction.ROTATE_AC:
+				// Rotate piece anti-clockwise
+				gameState.rotateCurrentPiece(Rotation.ANTI_CLOCKWISE)
+			CASE KeybindAction.ROTATE_CW:
+				// Rotate piece clockwise
+				gameState.rotateCurrentPiece(Rotation.CLOCKWISE)
+			CASE KeybindAction.ROTATE_180:
+				// Flip piece / rotate 180deg
+				gameState.rotateCurrentPiece(Rotation.FLIP)
+			CASE KeybindAction.EXIT:
+				PRINT("Exit bind pressed")
+				// Implement exit logic here in a later stage
+		ENDSWITCH
+	ENDPROCEDURE
+ENDCLASS

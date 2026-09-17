@@ -1,0 +1,71 @@
+ROOM_CODE_LENGTH = 4
+
+CLASS Lobby
+	READONLY string roomCode
+	PRIVATE Client[] clients
+	PRIVATE boolean gameInProgress 
+
+	PUBLIC PROCEDURE new(string[] currentCodes)
+		// Generate a random code
+		roomCode = generateCode(length)
+		// If code is already in use, repeatedly generate codes until one is not already in use
+		WHILE roomCode in currentCodes
+			roomCode = generateCode(ROOM_CODE_LENGTH)
+		ENDWHILE
+		// New room, no clients connected
+		clients = []
+		// No game is running when the room is created
+		gameInProgress = false
+	ENDPROCEDURE
+
+	PUBLIC PROCEDURE addClient(Client newClient)
+		IF newClient in clients THEN
+			return
+		ENDIF
+		clients.push(newClient)
+	ENDPROCEDURE
+
+	PRIVATE FUNCTION generateCode(int length)
+		result = ""
+		FOR i = 1 TO length // Runs length times
+			// ASCII A is 65, Z is 90
+			// Generate a random character code (65 to 90)
+			charCode = 65 + RAND_INT(0, 25)
+			// Convert code to chracter and concatenate it to result
+			result = result + CHAR_FROM_CODE(charCode)
+		NEXT i
+		return result
+	ENDFUNCTION
+ENDCLASS
+
+CLASS Client
+	PRIVATE string sessionId
+	PRIVATE WebSocket WebSocket
+	PRIVATE int score
+	PRIVATE int stackHeight
+	PRIVATE string name
+	PRIVATE boolean playerAlive
+	PRIVATE boolean spectating
+	PRIVATE int lastUpdate
+
+	PUBLIC PROCEDURE new(WebSocket givenWebSocket, string givenName, boolean isSpectating, string[] currentIds)
+		// Store the websocket so that we can send messages to the client
+		webSocket = givenWebSocket
+		// Generate a session id for the user
+		sessionId = generateSessionId()
+		// Set default property values
+		spectating = isSpectating
+		playerAlive = NOT isSpectating
+		name = givenName
+		stackHeight = 0
+		score = 0
+	ENDPROCEDURE
+
+	PRIVATE FUNCTION generateSessionId()
+		// Generates 16 bytes of random data, incredibly unlikely that this isn't unique
+		randomBytes = GENERATE_RANDOM_BYTES(16)
+		// Converts it to a base 64 string
+		return BYTES_TO_BASE_64(randomBytes)
+	ENDFUNCTION
+ENDCLASS
+

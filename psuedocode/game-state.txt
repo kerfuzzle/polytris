@@ -1,0 +1,22 @@
+CLASS GameState
+	PRIVATE int score
+	PRIVATE float currentGravity
+	PRIVATE PieceQueue queue
+	PRIVATE Piece currentPiece
+	PRIVATE Coordinate currentPiecePosition
+	PRIVATE int currentPieceRotation
+	PRIVATE Piece currentHold
+	PRIVATE boolean holdOnCooldown
+	PRIVATE Block[10][20] staticGrid
+
+	PUBLIC PROCEDURE new(Piece[] givenBag)
+		score = 0
+		currentGravity = 1 // Will change later appropriately after testing
+		queue = new PieceQueue(givenBag, 5) // New queue with given piece set and length 5
+		currentPiece = queue.getNextPiece() // Set the current piece to the first piece in the queue
+		currentHold = null // Hold piece should be empty by default
+	ENDPROCEDURE
+
+	// Getter methods
+ENDCLASS
+
